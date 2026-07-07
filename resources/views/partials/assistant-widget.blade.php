@@ -139,9 +139,10 @@
                 </template>
 
                 <div x-show="loading" class="flex justify-start">
-                    <div class="inline-flex items-center rounded-lg border border-border bg-white px-3 py-2 text-sm text-muted shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                        <span data-lucide="loader" class="mr-2 h-4 w-4 animate-spin"></span>
-                        Checking live system data...
+                    <div class="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-muted shadow-sm dark:border-gray-800 dark:bg-gray-900" aria-label="Assistant is typing">
+                        <span class="assistant-typing-dot"></span>
+                        <span class="assistant-typing-dot" style="animation-delay: 0.15s"></span>
+                        <span class="assistant-typing-dot" style="animation-delay: 0.3s"></span>
                     </div>
                 </div>
             </div>
@@ -156,6 +157,22 @@
             </form>
         </div>
     </div>
+
+    <style>
+        .assistant-typing-dot {
+            height: 0.4rem;
+            width: 0.4rem;
+            border-radius: 9999px;
+            background-color: currentColor;
+            opacity: 0.4;
+            animation: assistant-typing 1s infinite ease-in-out;
+        }
+
+        @keyframes assistant-typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-0.25rem); opacity: 1; }
+        }
+    </style>
 
     <script>
         function systemAssistant(config) {
@@ -218,6 +235,24 @@
                     this.scrollThread();
                     this.$nextTick(() => window.renderLucideIcons());
                 },
+                typeAssistantMessage(text, answer = null) {
+                    this.pushMessage('assistant', '');
+                    const message = this.messages[this.messages.length - 1];
+
+                    let index = 0;
+                    const timer = window.setInterval(() => {
+                        index = Math.min(index + 3, text.length);
+                        message.text = text.slice(0, index);
+                        this.scrollThread();
+
+                        if (index >= text.length) {
+                            window.clearInterval(timer);
+                            message.answer = answer;
+                            this.scrollThread();
+                            this.$nextTick(() => window.renderLucideIcons());
+                        }
+                    }, 25);
+                },
                 askPreset(preset) {
                     this.ask(preset.key, preset.question || preset.label);
                 },
@@ -256,7 +291,7 @@
                         })
                         .then(payload => {
                             this.activePreset = payload.preset;
-                            this.pushMessage('assistant', this.assistantText(payload), payload);
+                            this.typeAssistantMessage(this.assistantText(payload), payload);
                         })
                         .catch(() => window.toast && window.toast.fire({ icon: 'error', title: 'Assistant could not load data.' }))
                         .finally(() => {
